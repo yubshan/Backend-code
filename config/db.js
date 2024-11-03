@@ -6,6 +6,7 @@ const connectDB = async () => {
     try {
         await mongoose.connect(db);
         console.log("MongoDB connected....");
+        console.log("mongoDB goes blank");
     } catch (err) {
         console.error(err);
 
