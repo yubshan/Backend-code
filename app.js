@@ -9,6 +9,7 @@ const app = express();
 const errorsController = require('./controllers/errors.js');
 const adminRoutes = require('./routes/admin');
 const shopRoutes = require('./routes/shop');
+const authRoutes = require('./routes/auth');
 
 // Models
 const User = require('./models/user');
@@ -33,6 +34,7 @@ app.use((req, res, next) => {
 });
 app.use('/admin', adminRoutes);
 app.use(shopRoutes);
+app.use(authRoutes);
 
 app.use(errorsController.get404);
 
