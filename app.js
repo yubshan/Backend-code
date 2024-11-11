@@ -2,9 +2,16 @@ const path = require('path');
 const mongoose = require('mongoose');
 const express = require('express');
 const bodyParser = require('body-parser');
+const session = require('express-session');
+const MongoDbStore = require('connect-mongodb-session')(session);
+const MONGODB_URI ='mongodb+srv://yubshan09:yubshan1234567890@mern-practice.vuy41.mongodb.net/shop?retryWrites=true&w=majority&appName=MERN-Practice';
+
 
 const app = express();
-
+const store = MongoDbStore({
+    uri:MONGODB_URI,
+    collection:'session'
+});
 
 const errorsController = require('./controllers/errors.js');
 const adminRoutes = require('./routes/admin');
@@ -19,6 +26,7 @@ app.set('views', 'views');
 
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(session({secret:'my secret', resave:false , saveUninitialized:false, store: store}))
 
 
 app.use((req, res, next) => {
@@ -38,7 +46,7 @@ app.use(authRoutes);
 
 app.use(errorsController.get404);
 
-mongoose.connect('mongodb+srv://yubshan09:yubshan1234567890@mern-practice.vuy41.mongodb.net/shop?retryWrites=true&w=majority&appName=MERN-Practice')
+mongoose.connect(MONGODB_URI)
 .then((result) => {
     User.findOne().then((user) => {
         if(!user){
