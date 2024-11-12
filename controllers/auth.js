@@ -1,36 +1,156 @@
 const User = require('../models/user');
-
+const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 
 module.exports.getLogin = (req, res, next) => {
-    // const isLoggedIn=req.headers.cookie.split(';')[1].trim().split('=')[1];
-    const isLoggedIn = req.session.isLoggedIn || false;
+    let message = req.flash('loginError');
+    if(message.length>0){
+        message= message[0];
+    }else{
+        message= null;
+    }
+
         res.render('auth/login', {
                         pageTitle: 'Authetication',
                         path: '/login',
-                        isAuthenticated : isLoggedIn
+                        errorMessage: message
+                    });
+};
+
+module.exports.getSignup = (req, res, next) => {
+        let message = req.flash('signupError');
+        if(message.length >0){
+            message = message[0];
+        }else{
+            message= null;
+        }
+        res.render('auth/signup', {
+                        pageTitle: 'Sign-Up',
+                        path: '/signup',
+                        errorMessage : message,
                     });
 };
 module.exports.postLogin = (req, res, next) => {
-    User.findById('6731f2908d7d6a5c97f10b8a').then((user) => {
-        req.session.user = user;
-        req.session.isLoggedIn = true;
-        req.session.save((err)=>{
-            console.error(err);
-            
-            res.redirect('/');
-        })
-        
-    }).catch((err) => {
-        console.error(err);
-        
-    });
+    const { email, password } = req.body;
 
+    User.findOne({ email })
+        .then(user => {
+            if (!user) {
+                req.flash('loginError', 'Invalid Email or Password')
+                return res.redirect('/login'); // Return to avoid further execution
+            }
+            bcrypt.compare(password, user.password)
+                .then(doMatch => {
+                    if (doMatch) {
+                        req.session.user = user;   // Store user in session
+                        req.session.isLoggedIn = true;
+                        req.user = user;  // Make user accessible via req.user
+                        return req.session.save(err => {
+                            if (err) {
+                                console.error(err);
+                                return res.redirect('/login'); // Redirect to login if there's an error
+                            }
+                            res.redirect('/'); // Redirect to the home page after successful login
+                        });
+                    }
+                    req.flash('loginError', 'Invalid Email or Password')
+                    res.redirect('/login'); // Redirect if passwords don't match
+                })
+                .catch(err => {
+                    console.error(err);
+                    req.flash('loginError', 'Invalid Email or Password')
+                    res.redirect('/login');
+                });
+        })
+        .catch(err => {
+            console.error(err);
+            res.redirect('/login');
+        });
 };
+
+
+
+
 module.exports.postLogout = (req, res, next) => {
     req.session.destroy((err)=>{
         console.error(err);
         console.log("deleted");
         res.redirect('/');
     })
+};
+module.exports.postSignup = (req, res, next) => {
+   const {email , password, confirmPassword } = req.body;
+
+   User.findOne({email:email}).then((userDoc) => {
+    if(userDoc){
+        req.flash('signupError', 'Given Email Already Exist.')
+        return res.redirect('/signup');
+    }
+   if(password != confirmPassword){
+    req.flash('signupError', `Password doesn't match.`)
+    return res.redirect('/signup');
+   }
+   return bcrypt.hash(password, 12).then((hashedPassword) => {
+    const user =new User({
+        email:email,
+        password:hashedPassword,
+        cart:{
+            item:[]
+        }
+    });
+    return user.save();
+   })
+   .then((result) => {
+    req.flash('signupEmailError', 'Something Went Wrong')
+    res.redirect('/login');
+   });
+    
+   })
+   .catch((err) => {
+    console.error(err);
+    
+   });
 
 };
+
+module.exports.getResetPassword = (req, res, next)=>{
+    let message = req.flash('signupError');
+    if(message.length >0){
+        message = message[0];
+    }else{
+        message= null;
+    }
+    res.render('auth/reset', {
+        pageTitle: 'Reset Password',
+        path: '/reset',
+        errorMessage : message,
+    });
+}
+module.exports.postResetPassword = (req, res, next)=>{
+    crypto.randomBytes(32, (err, buffer)=>{
+        if(err){
+            console.error(err)
+            return res.redirect("/reset");
+            
+        }
+        const token = buffer.toString('hex');
+        User.findOne({email:req.body.email}).then((user) => {
+            if(!user){
+                req.flash('resetError' , 'No account with that email found.');
+                res.redirect('/reset');
+                
+            }
+            
+            user.resetToken = token;
+            user.resetTokenExpiration= Date.now() + 3600000;
+            return user.save();
+        }).then((result) => {
+            res.redirect(`/reset/{token}`)
+        })
+        .catch((err) => {
+
+            console.error(err);
+            
+        });
+    })
+}
