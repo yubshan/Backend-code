@@ -1,6 +1,7 @@
 const User = require('../models/user');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
+const {validationResult} = require('express-validator')
 
 module.exports.getLogin = (req, res, next) => {
     let message = req.flash('loginError');
@@ -28,6 +29,12 @@ module.exports.getSignup = (req, res, next) => {
                         pageTitle: 'Sign-Up',
                         path: '/signup',
                         errorMessage : message,
+                        oldInput:{
+                            email:'',
+                            password:'',
+                            confirmPassword:''
+                        },
+                        validationErrors:[]
                     });
 };
 module.exports.postLogin = (req, res, next) => {
@@ -80,16 +87,26 @@ module.exports.postLogout = (req, res, next) => {
 };
 module.exports.postSignup = (req, res, next) => {
    const {email , password, confirmPassword } = req.body;
-
+   const error = validationResult(req);
+   if(!error.isEmpty()){
+    return res.status(422).render('auth/signup', {
+        pageTitle: 'Sign-Up',
+        path: '/signup',
+        errorMessage : error.array()[0].msg,
+        oldInput:{
+            email,
+            password,
+            confirmPassword
+        },
+        validationErrors: error.array()
+    });
+   }
    User.findOne({email:email}).then((userDoc) => {
     if(userDoc){
         req.flash('signupError', 'Given Email Already Exist.')
         return res.redirect('/signup');
     }
-   if(password != confirmPassword){
-    req.flash('signupError', `Password doesn't match.`)
-    return res.redirect('/signup');
-   }
+   
    return bcrypt.hash(password, 12).then((hashedPassword) => {
     const user =new User({
         email:email,

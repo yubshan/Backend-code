@@ -11,8 +11,13 @@ module.exports.getAddProduct = (req, res, next) => {
 };
 
 module.exports.postAddProduct = (req, res, next) => {
-    const {title , price , description , imageUrl} = req.body;
-    
+    const {title , price , description } = req.body;
+    const image = req.file;
+    if(!image){
+        res.redirect('/admin/products');
+    }
+
+    const imageUrl = image.path.replace(/\\/g, '/'); // Ensures forward slashes
 
     const product = new Product({
         title: title,
@@ -69,17 +74,21 @@ module.exports.getEditProduct = (req, res, next) => {
 };
 
 module.exports.postEditProduct = (req, res, next) => {
-    const {title , price , description , imageUrl} = req.body;
+    const {title , price , description } = req.body;
+    const image = req.file;
     const productId = req.body.id;
    Product.findById(productId).then((product) => {
       
       if(product.userId.toString() !== req.user._id.toString()){
         return res.redirect('/')
       }
-       product.title = title,
-       product.price = price,
-       product.description = description,
-       product.imageUrl = imageUrl
+       product.title = title;
+       product.price = price;
+       product.description = description;
+       if(image){
+
+           product.imageUrl = image.path.replace(/\\/g, '/');
+       }
        return product.save().then(result => {
         console.log("Updated product");
         res.redirect('/admin/products');
@@ -88,12 +97,12 @@ module.exports.postEditProduct = (req, res, next) => {
         .catch(err => console.log(err));
 };
 
-module.exports.postDeleteProduct = (req, res, next) => {
-    const productId = req.body.productId;
+module.exports.deleteProduct = (req, res, next) => {
+    const productId = req.params.productId;
     Product
         .deleteOne({_id:productId , userId : req.user._id})
         .then(result => {
-            res.redirect('/admin/products');
+            res.json({message:'success!'});
         })
         .catch(err => console.log(err));
 };

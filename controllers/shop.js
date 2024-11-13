@@ -1,14 +1,30 @@
 const Product = require('../models/product');
 const Order = require('../models/order');
+const ITEM_PER_PAGE = 1;
 
 module.exports.getIndex = (req, res, next) => {
-    Product
+
+    const page = +req.query.page;
+    let totalItem ;
+    Product.find().countDocuments().then((numproduct) => {
+         totalItem= numproduct;
+        return Product
         .find()
+        .skip((page-1)* ITEM_PER_PAGE)
+        .limit(ITEM_PER_PAGE)
+    })
         .then(products => {
             res.render('shop/index', {
                 pageTitle: 'Shop',
                 path: '/',
                 products: products,
+                currentPage: page,
+                hasNextPage: ITEM_PER_PAGE * page < totalItem,
+                hasPreviousPage: page > 1,
+                nextPage : page + 1,
+                previousPage : page -1,
+                lastPage: Math.ceil(totalItem / ITEM_PER_PAGE)
+
                 
             });
         })
@@ -16,17 +32,32 @@ module.exports.getIndex = (req, res, next) => {
 };
 
 module.exports.getProducts = (req, res, next) => {
-    Product
+    const page = +req.query.page;
+    let totalItem ;
+    Product.find().countDocuments().then((numproduct) => {
+         totalItem= numproduct;
+        return Product
         .find()
+        .skip((page-1)* ITEM_PER_PAGE)
+        .limit(ITEM_PER_PAGE)
+    })
         .then(products => {
-            res.render('shop/product-list', {
+            res.render('shop/index', {
                 pageTitle: 'Products',
                 path: '/products',
                 products: products,
-                isAuthenticated : req.session.isLoggedIn
+                currentPage: page,
+                hasNextPage: ITEM_PER_PAGE * page < totalItem,
+                hasPreviousPage: page > 1,
+                nextPage : page + 1,
+                previousPage : page -1,
+                lastPage: Math.ceil(totalItem / ITEM_PER_PAGE)
+
+                
             });
         })
         .catch(err => console.log(err));
+
 };
 
 module.exports.getProduct = (req, res, next) => {
